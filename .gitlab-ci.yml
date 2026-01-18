@@ -1,0 +1,25 @@
+stages:
+  - changelog
+
+check_changelog_yaml_upd:
+  stage: changelog
+  tags:
+    - ktr
+  script:
+    # Проверить нужно ли делать проверку, строка no_check в названии - пропустить проверку
+    - '[[ -z $(echo "$CI_MERGE_REQUEST_TITLE" | grep -oP "no_check") ]] && echo "Checking changelog updates" || { echo "Skip checking changelog updates" && exit 0; }'
+    # Проверить был ли обновлён changelog
+    - '[[ -z $(git diff --name-only develop | grep changelog.yaml) ]] && { echo "Error: Changelog was not updated" && exit 1; } || echo "Task was added to changelog. OK."'
+    # Проверить номер задачи из ссылки последней задачи в changelog'е
+    - 'changelog_task_num=$(sed -n "2p" changelog.yaml | grep -oP "(?<=KTR-)\d+") || { echo "Error: Wrong link to task." && exit 1; }'
+    # Проверить название ветки
+    - 'branch_task_num=$(echo "$CI_COMMIT_REF_NAME" | grep -oP "(?<=j)(\d+)") || { echo "Error: Wrong branch name format. Expexted prefix: \`j<number>\`" && exit 1; }'
+    # Проверить название реквеста
+    - 'mr_title_task_num=$(echo "$CI_MERGE_REQUEST_TITLE" | grep -oP "^(Draft: )?\[J(\d+)\]" | grep -oP "\d+") && echo "MR prefix OK." || { echo "Error: Wrong merge request title format. Expeсted prefix: \`[J<number>]\` or \`Draft: [J<number>]\`" && exit 1; }'
+    # Проверить на равенство префикс в названии ветки и в MR
+    - '[[ "$branch_task_num" -eq "$mr_title_task_num" ]] && echo "Branch prefix and MR prefix are the same. OK." || { echo "Error: Task and MR numbers do not match." && exit 1; }'
+    # Проверить добавлена ли запись ссылкой на задачу в Jira в changelog'е
+    - '[[ "$branch_task_num" -eq "$changelog_task_num" ]] && echo "Task number from changelog, branch prefix and MR prefix are the same. OK." || { echo "Error: chengelog task number does not match." && exit 1; }'
+  rules:
+    # Правило, которое позволяет запускать задачу только в контексте merge request при коммите в ветку 'develop' или 'master'
+    - if: $CI_MERGE_REQUEST_ID && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master")
