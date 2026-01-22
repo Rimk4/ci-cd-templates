@@ -250,7 +250,36 @@ python3 docker-manager.py clean --images --volumes
 ```
 
 ---
+# 1. Установите Docker Buildx
+docker buildx version
 
-**Техподдержка:** devops@company.com  
-**Документация:** docs.company.com/docker  
-**Версия:** 1.0.0
+# Если не установлен:
+export DOCKER_BUILDKIT=1
+# или установите через пакетный менеджер
+
+# 2. Инициализируйте конфигурацию
+python3 docker-manager.py init
+
+# 3. Создайте Dockerfile
+cat > Dockerfile << 'EOF'
+FROM alpine:3.18
+WORKDIR /app
+COPY . .
+CMD ["echo", "Hello from Docker Buildx!"]
+EOF
+
+# 4. Сборка с Buildx
+python3 docker-manager.py build --tag v1.0
+
+# 5. Мультиархитектурная сборка
+python3 docker-manager.py build --platform linux/amd64,linux/arm64 --push
+
+# 6. Просмотр builders
+python3 docker-manager.py builders
+
+# 7. Запуск контейнера
+python3 docker-manager.py run --tag v1.0
+
+# 8. Очистка
+python3 docker-manager.py clean --all
+
