@@ -1,5 +1,12 @@
 stages:
   - changelog
+  - test
+  - build
+  - deploy
+
+variables:
+  # Общие переменные
+  CHANGELOG_FILE: "changelog.yaml"
 
 check_changelog_yaml_upd:
   stage: changelog
@@ -19,7 +26,68 @@ check_changelog_yaml_upd:
     # Проверить на равенство префикс в названии ветки и в MR
     - '[[ "$branch_task_num" -eq "$mr_title_task_num" ]] && echo "Branch prefix and MR prefix are the same. OK." || { echo "Error: Task and MR numbers do not match." && exit 1; }'
     # Проверить добавлена ли запись ссылкой на задачу в Jira в changelog'е
-    - '[[ "$branch_task_num" -eq "$changelog_task_num" ]] && echo "Task number from changelog, branch prefix and MR prefix are the same. OK." || { echo "Error: chengelog task number does not match." && exit 1; }'
+    - '[[ "$branch_task_num" -eq "$changelog_task_num" ]] && echo "Task number from changelog, branch prefix and MR prefix are the same. OK." || { echo "Error: changelog task number does not match." && exit 1; }'
   rules:
     # Правило, которое позволяет запускать задачу только в контексте merge request при коммите в ветку 'develop' или 'master'
     - if: $CI_MERGE_REQUEST_ID && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master")
+
+# Пример тестового этапа
+run_tests:
+  stage: test
+  tags:
+    - ktr
+  script:
+    - echo "Running tests..."
+    # Добавьте здесь команды для запуска тестов
+    - echo "Tests completed successfully"
+  rules:
+    - if: $CI_MERGE_REQUEST_ID && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master")
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "master"
+
+# Пример этапа сборки
+build:
+  stage: build
+  tags:
+    - ktr
+  script:
+    - echo "Building application..."
+    # Добавьте здесь команды для сборки
+    - echo "Build completed successfully"
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_MERGE_REQUEST_ID && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master")
+
+# Пример этапа деплоя для develop ветки
+deploy_to_dev:
+  stage: deploy
+  tags:
+    - ktr
+  script:
+    - echo "Deploying to development environment..."
+    # Добавьте здесь команды для деплоя
+    - echo "Deployed to development environment"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_MERGE_REQUEST_ID && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"
+
+# Пример этапа деплоя для master ветки
+deploy_to_prod:
+  stage: deploy
+  tags:
+    - ktr
+  script:
+    - echo "Deploying to production environment..."
+    # Добавьте здесь команды для деплоя
+    - echo "Deployed to production environment"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  needs:
+    - build
+  when: manual
+  
